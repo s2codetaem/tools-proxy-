@@ -21,19 +21,19 @@ if ! command -v apt >/dev/null 2>&1; then
     exit 1
 fi
 
+# Kiểm tra wget hoặc curl
+if ! command -v wget >/dev/null 2>&1 && ! command -v curl >/dev/null 2>&1; then
+    echo -e "${RED}❌ Yêu cầu cài đặt wget hoặc curl. Đang cài đặt...${NC}"
+    if ! apt update && apt install -y wget curl; then
+        echo -e "${RED}❌ Lỗi khi cài đặt wget/curl${NC}"
+        exit 1
+    fi
+fi
+
 # Kiểm tra kết nối Internet
 if ! ping -c 1 google.com >/dev/null 2>&1; then
     echo -e "${RED}❌ Không có kết nối Internet. Vui lòng kiểm tra mạng và thử lại.${NC}"
     exit 1
-fi
-
-# Kiểm tra wget hoặc curl
-if ! command -v wget >/dev/null 2>&1 && ! command -v curl >/dev/null 2>&1; then
-    echo -e "${RED}❌ Yêu cầu cài đặt wget hoặc curl. Đang cài đặt...${NC}"
-    if ! apt install -y wget curl; then
-        echo -e "${RED}❌ Lỗi khi cài đặt wget/curl${NC}"
-        exit 1
-    fi
 fi
 
 # Hiển thị logo và thông tin
@@ -59,11 +59,11 @@ echo ""
 
 # Hướng dẫn sử dụng
 echo -e "${YELLOW}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${YELLOW}║${WHITE} ⚠️ QUAN TRỌNG: ${RED}Port 6969 phải được mở trước khi sử dụng proxy! ${GREEN}Proxy: tangoclong:2000${YELLOW}║${NC}"
+echo -e "${YELLOW}║${WHITE} ⚠️ QUAN TRỌNG: ${RED}Mở port 6969 ${WHITE}trước khi chạy script │ ${GREEN}Proxy: tangoclong:2000${YELLOW}║${NC}"
 echo -e "${YELLOW}╚═══════════════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Kiểm tra và mở port 6969
+# Kiểm tra port 6969
 if ! netstat -tuln | grep -q ":6969 "; then
     echo -e "${RED}❌ Port 6969 chưa được mở. Đang thử mở port...${NC}"
     if ! ufw allow 6969 >/dev/null 2>&1; then
@@ -71,8 +71,38 @@ if ! netstat -tuln | grep -q ":6969 "; then
     fi
 fi
 
-# Bắt đầu cài đặt tự động
-echo -e "${PURPLE}🚀 Bắt đầu cài đặt HTTP Proxy Server tự động...${NC}"
+# Xác nhận đã đọc hướng dẫn
+echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║${WHITE} Bạn đã mở port 6969 và sẵn sàng cài đặt HTTP proxy? ${YELLOW}[Y/N]${GREEN}║${NC}"
+echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+max_attempts=5
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+    read -p "➤ Nhập [Y] để tiếp tục hoặc [N] để thoát: " -i Y confirm_ready </dev/tty
+    case "${confirm_ready,,}" in
+        y|yes)
+            echo -e "${GREEN}✅ Đang bắt đầu cài đặt HTTP proxy...${NC}"
+            echo ""
+            break
+            ;;
+        n|no)
+            echo -e "${RED}❌ Đã hủy! Vui lòng mở port 6969 rồi chạy lại script.${NC}"
+            exit 0
+            ;;
+        *)
+            echo -e "${YELLOW}⚠️ Vui lòng nhập Y hoặc N${NC}"
+            attempt=$((attempt + 1))
+            if [ $attempt -eq $max_attempts ]; then
+                echo -e "${RED}❌ Đã vượt quá số lần thử. Thoát script.${NC}"
+                exit 1
+            fi
+            ;;
+    esac
+done
+
+echo -e "${PURPLE}🚀 Bắt đầu cài đặt HTTP Proxy Server...${NC}"
 echo ""
 sleep 2
 
@@ -112,6 +142,33 @@ check_network_speed() {
     echo "$speed_mbps"
 }
 
+# Hàm kiểm tra tên đầy đủ (nghiêm ngặt cho lần đầu)
+validate_full_name_strict() {
+    local name="$1"
+    local word_count=$(echo "$name" | wc -w)
+    if [ "$word_count" -lt 2 ]; then
+        return 1
+    fi
+    if [[ ! "$name" =~ ^[A-Za-zÀ-ỹ[:space:]]+$ ]]; then
+        return 1
+    fi
+    case "${name,,}" in
+        "test test"|"abc xyz"|"nguyen van a"|"tran thi b"|"le van c"|"admin user"|"user name"|"full name")
+            return 1
+            ;;
+    esac
+    return 0
+}
+
+# Hàm kiểm tra tên cơ bản
+validate_full_name_basic() {
+    local name="$1"
+    if [ -z "$name" ] || [ ${#name} -lt 2 ]; then
+        return 1
+    fi
+    return 0
+}
+
 # Hàm kiểm tra HTTP proxy
 check_http_proxy() {
     local ip=$1
@@ -135,8 +192,46 @@ check_http_proxy() {
     return 1
 }
 
+# Xác thực tên khách hàng
+echo -e "${PURPLE}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${PURPLE}║${WHITE} XÁC THỰC THÔNG TIN ${PURPLE}║${NC}"
+echo -e "${PURPLE}╠═══════════════════════════════════════════════════════════════════════════════╣${NC}"
+echo -e "${PURPLE}║${YELLOW} 👤 Vui lòng nhập họ và tên đầy đủ của bạn để tiếp tục ${PURPLE}║${NC}"
+echo -e "${PURPLE}║${YELLOW} ⚠️ Lưu ý: Tên phải là tên thật (Họ + Tên), không được để trống ${PURPLE}║${NC}"
+echo -e "${PURPLE}╚═══════════════════════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+attempt_count=0
+while true; do
+    attempt_count=$((attempt_count + 1))
+    read -p "➤ Nhập họ và tên đầy đủ: " client_full_name </dev/tty
+    if [ $attempt_count -eq 1 ]; then
+        if validate_full_name_strict "$client_full_name"; then
+            echo -e "${GREEN}✅ Tên hợp lệ! Xin chào $client_full_name${NC}"
+            break
+        else
+            echo -e "${RED}❌ Tên không hợp lệ! Vui lòng nhập họ và tên đầy đủ (ít nhất 2 từ, không chứa số hoặc ký tự đặc biệt)${NC}"
+            echo -e "${YELLOW}💡 Ví dụ: Nguyễn Văn An, Trần Thị Hoa...${NC}"
+            echo ""
+        fi
+    else
+        if validate_full_name_basic "$client_full_name"; then
+            echo -e "${GREEN}✅ Cảm ơn $client_full_name! Đang tiếp tục...${NC}"
+            break
+        else
+            echo -e "${RED}❌ Vui lòng không để trống tên!${NC}"
+            echo ""
+        fi
+    fi
+done
+
+echo ""
+echo -e "${PURPLE}🚀 Chào mừng $client_full_name! Đang khởi động HTTP Proxy Installer...${NC}"
+echo ""
+
 # Tự động cài đặt HTTP Proxy
-echo -e "${GREEN}✅ Bắt đầu cài đặt tự động cho proxy VIP...${NC}"
+echo -e "${GREEN}✅ Xác thực thành công!${NC}"
+echo -e "${PURPLE}🚀 Chế độ VIP - Tự động cài đặt HTTP Proxy...${NC}"
 proxy_port="6969"
 squid_user="tangoclong"
 squid_pass="2000"
@@ -206,7 +301,7 @@ if [ "$ip_address" = "N/A" ]; then
     exit 1
 fi
 
-echo -e "${GREEN}✅ Cài đặt HTTP Proxy VIP thành công!${NC}"
+echo -e "${GREEN}✅ Cài đặt HTTP Proxy VIP thành công cho $client_full_name!${NC}"
 
 # Lấy thông tin IP
 ip_info=$(get_ip_info "$ip_address")
@@ -221,7 +316,7 @@ proxy_status=$(check_http_proxy "$ip_address" "$proxy_port" "$squid_user" "$squi
 
 # Hiển thị thông tin HTTP proxy
 echo -e "${PURPLE}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║${WHITE} THÔNG TIN HTTP PROXY VIP ${PURPLE}║${NC}"
+echo -e "${PURPLE}║${WHITE} THÔNG TIN HTTP PROXY VIP - $client_full_name${PURPLE}║${NC}"
 echo -e "${PURPLE}╠═══════════════════════════════════════════════════════════════════════════════╣${NC}"
 echo -e "${PURPLE}║${CYAN} 🌐 HTTP Proxy URL: ${WHITE}http://$squid_user:$squid_pass@$ip_address:$proxy_port ${PURPLE}║${NC}"
 echo -e "${PURPLE}║${CYAN} 📍 Địa chỉ IP: ${WHITE}$ip_address ${PURPLE}║${NC}"
