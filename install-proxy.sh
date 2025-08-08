@@ -21,19 +21,13 @@ if ! command -v apt >/dev/null 2>&1; then
     exit 1
 fi
 
-# Kiểm tra wget hoặc curl
-if ! command -v wget >/dev/null 2>&1 && ! command -v curl >/dev/null 2>&1; then
-    echo -e "${RED}❌ Yêu cầu cài đặt wget hoặc curl. Đang cài đặt...${NC}"
-    if ! apt update && apt install -y wget curl; then
-        echo -e "${RED}❌ Lỗi khi cài đặt wget/curl${NC}"
+# Kiểm tra curl
+if ! command -v curl >/dev/null 2>&1; then
+    echo -e "${RED}❌ Yêu cầu cài đặt curl. Đang cài đặt...${NC}"
+    if ! apt update && apt install -y curl; then
+        echo -e "${RED}❌ Lỗi khi cài đặt curl${NC}"
         exit 1
     fi
-fi
-
-# Kiểm tra kết nối Internet
-if ! ping -c 1 google.com >/dev/null 2>&1; then
-    echo -e "${RED}❌ Không có kết nối Internet. Vui lòng kiểm tra mạng và thử lại.${NC}"
-    exit 1
 fi
 
 # Hiển thị logo và thông tin
