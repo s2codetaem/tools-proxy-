@@ -65,32 +65,6 @@ if ! netstat -tuln | grep -q ":6969 "; then
     fi
 fi
 
-# Xác thực mật khẩu
-echo -e "${PURPLE}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║${WHITE} XÁC THỰC MẬT KHẨU ${PURPLE}║${NC}"
-echo -e "${PURPLE}╠═══════════════════════════════════════════════════════════════════════════════╣${NC}"
-echo -e "${PURPLE}║${YELLOW} 🔑 Vui lòng nhập mật khẩu để tiếp tục (mật khẩu mặc định: 08122000) ${PURPLE}║${NC}"
-echo -e "${PURPLE}╚═══════════════════════════════════════════════════════════════════════════════╝${NC}"
-echo ""
-
-max_attempts=5
-attempt=0
-while [ $attempt -lt $max_attempts ]; do
-    read -p "➤ Nhập mật khẩu: " -s password </dev/tty
-    echo ""
-    if [ "$password" = "08122000" ]; then
-        echo -e "${GREEN}✅ Mật khẩu đúng! Đang tiếp tục...${NC}"
-        break
-    else
-        echo -e "${RED}❌ Mật khẩu sai! Vui lòng thử lại.${NC}"
-        attempt=$((attempt + 1))
-        if [ $attempt -eq $max_attempts ]; then
-            echo -e "${RED}❌ Đã vượt quá số lần thử. Thoát script.${NC}"
-            exit 1
-        fi
-    fi
-done
-
 # Xác nhận Y/N
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║${WHITE} Bạn đã mở port 6969 và sẵn sàng cài đặt HTTP proxy? ${YELLOW}[Y/N]${GREEN}║${NC}"
