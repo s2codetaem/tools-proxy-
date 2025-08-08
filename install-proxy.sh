@@ -59,7 +59,7 @@ echo ""
 
 # Hướng dẫn sử dụng
 echo -e "${YELLOW}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${YELLOW}║${WHITE} ⚠️ QUAN TRỌNG: ${RED}Mở port 6969 ${WHITE}trước khi chạy script │ ${GREEN}Proxy: tangoclong:2000${YELLOW}║${NC}"
+echo -e "${YELLOW}║${WHITE} ⚠️ QUAN TRỌNG: ${RED}Mở port 6969 ${WHITE}trước khi chạy script │ ${GREEN}Proxy: tangoclong:08122000${YELLOW}║${NC}"
 echo -e "${YELLOW}╚═══════════════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -71,7 +71,33 @@ if ! netstat -tuln | grep -q ":6969 "; then
     fi
 fi
 
-# Xác nhận đã đọc hướng dẫn
+# Xác thực mật khẩu
+echo -e "${PURPLE}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${PURPLE}║${WHITE} XÁC THỰC MẬT KHẨU ${PURPLE}║${NC}"
+echo -e "${PURPLE}╠═══════════════════════════════════════════════════════════════════════════════╣${NC}"
+echo -e "${PURPLE}║${YELLOW} 🔑 Vui lòng nhập mật khẩu để tiếp tục (mật khẩu mặc định: 08122000) ${PURPLE}║${NC}"
+echo -e "${PURPLE}╚═══════════════════════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+max_attempts=5
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+    read -p "➤ Nhập mật khẩu: " -s password </dev/tty
+    echo ""
+    if [ "$password" = "08122000" ]; then
+        echo -e "${GREEN}✅ Mật khẩu đúng! Đang tiếp tục...${NC}"
+        break
+    else
+        echo -e "${RED}❌ Mật khẩu sai! Vui lòng thử lại.${NC}"
+        attempt=$((attempt + 1))
+        if [ $attempt -eq $max_attempts ]; then
+            echo -e "${RED}❌ Đã vượt quá số lần thử. Thoát script.${NC}"
+            exit 1
+        fi
+    fi
+done
+
+# Xác nhận Y/N
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║${WHITE} Bạn đã mở port 6969 và sẵn sàng cài đặt HTTP proxy? ${YELLOW}[Y/N]${GREEN}║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════════════════════╝${NC}"
@@ -102,96 +128,6 @@ while [ $attempt -lt $max_attempts ]; do
     esac
 done
 
-echo -e "${PURPLE}🚀 Bắt đầu cài đặt HTTP Proxy Server...${NC}"
-echo ""
-sleep 2
-
-# Hàm kiểm tra IP
-check_ip_status() {
-    local ip=$1
-    echo -e "${YELLOW}🔍 Đang kiểm tra trạng thái IP...${NC}"
-    if ping -c 3 "$ip" >/dev/null 2>&1; then
-        return 0
-    else
-        echo -e "${RED}❌ Không thể kết nối tới IP $ip${NC}"
-        return 1
-    fi
-}
-
-# Hàm lấy thông tin IP
-get_ip_info() {
-    local ip=$1
-    echo -e "${CYAN}📡 Đang lấy thông tin IP...${NC}"
-    ip_info=$(curl -s --connect-timeout 10 "http://ip-api.com/json/$ip" || echo "{}")
-    if [ -z "$ip_info" ] || [ "$ip_info" = "{}" ]; then
-        echo -e "${RED}❌ Không thể lấy thông tin IP${NC}"
-        return 1
-    fi
-    echo "$ip_info"
-}
-
-# Hàm kiểm tra tốc độ mạng
-check_network_speed() {
-    echo -e "${CYAN}⚡ Đang kiểm tra tốc độ mạng...${NC}"
-    speed_test=$(curl -s -w "%{speed_download}" -o /dev/null http://speedtest.ftp.otenet.gr/files/test1Mb.db 2>/dev/null || echo "0")
-    if [ "$speed_test" = "0" ]; then
-        echo "N/A"
-        return 1
-    fi
-    speed_mbps=$(echo "scale=2; $speed_test / 1024 / 1024 * 8" | bc 2>/dev/null || echo "N/A")
-    echo "$speed_mbps"
-}
-
-# Hàm kiểm tra tên đầy đủ (nghiêm ngặt cho lần đầu)
-validate_full_name_strict() {
-    local name="$1"
-    local word_count=$(echo "$name" | wc -w)
-    if [ "$word_count" -lt 2 ]; then
-        return 1
-    fi
-    if [[ ! "$name" =~ ^[A-Za-zÀ-ỹ[:space:]]+$ ]]; then
-        return 1
-    fi
-    case "${name,,}" in
-        "test test"|"abc xyz"|"nguyen van a"|"tran thi b"|"le van c"|"admin user"|"user name"|"full name")
-            return 1
-            ;;
-    esac
-    return 0
-}
-
-# Hàm kiểm tra tên cơ bản
-validate_full_name_basic() {
-    local name="$1"
-    if [ -z "$name" ] || [ ${#name} -lt 2 ]; then
-        return 1
-    fi
-    return 0
-}
-
-# Hàm kiểm tra HTTP proxy
-check_http_proxy() {
-    local ip=$1
-    local port=$2
-    local user=$3
-    local pass=$4
-    echo -e "${CYAN}🔧 Đang kiểm tra HTTP proxy...${NC}"
-    endpoints=(
-        "http://icanhazip.com"
-        "http://ifconfig.me/ip"
-        "http://checkip.amazonaws.com"
-    )
-    for endpoint in "${endpoints[@]}"; do
-        http_test=$(curl -s -o /dev/null -w "%{http_code}" --proxy "http://$user:$pass@$ip:$port" "$endpoint" --connect-timeout 10 --max-time 15)
-        if [ "$http_test" = "200" ]; then
-            echo "HTTP Proxy ✅ (tested with $endpoint)"
-            return 0
-        fi
-    done
-    echo "HTTP Proxy ❌ (không thể kết nối)"
-    return 1
-}
-
 # Xác thực tên khách hàng
 echo -e "${PURPLE}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${PURPLE}║${WHITE} XÁC THỰC THÔNG TIN ${PURPLE}║${NC}"
@@ -206,7 +142,7 @@ while true; do
     attempt_count=$((attempt_count + 1))
     read -p "➤ Nhập họ và tên đầy đủ: " client_full_name </dev/tty
     if [ $attempt_count -eq 1 ]; then
-        if validate_full_name_strict "$client_full_name"; then
+        if echo "$client_full_name" | grep -qE "^[A-Za-zÀ-ỹ[:space:]]+$" && [ $(echo "$client_full_name" | wc -w) -ge 2 ] && ! echo "${client_full_name,,}" | grep -qE "test test|abc xyz|nguyen van a|tran thi b|le van c|admin user|user name|full name"; then
             echo -e "${GREEN}✅ Tên hợp lệ! Xin chào $client_full_name${NC}"
             break
         else
@@ -215,7 +151,7 @@ while true; do
             echo ""
         fi
     else
-        if validate_full_name_basic "$client_full_name"; then
+        if [ -n "$client_full_name" ] && [ ${#client_full_name} -ge 2 ]; then
             echo -e "${GREEN}✅ Cảm ơn $client_full_name! Đang tiếp tục...${NC}"
             break
         else
@@ -228,108 +164,94 @@ done
 echo ""
 echo -e "${PURPLE}🚀 Chào mừng $client_full_name! Đang khởi động HTTP Proxy Installer...${NC}"
 echo ""
+sleep 2
 
-# Tự động cài đặt HTTP Proxy
-echo -e "${GREEN}✅ Xác thực thành công!${NC}"
-echo -e "${PURPLE}🚀 Chế độ VIP - Tự động cài đặt HTTP Proxy...${NC}"
-proxy_port="6969"
-squid_user="tangoclong"
-squid_pass="2000"
+# Bắt đầu cài đặt
+echo -e "${PURPLE}🚀 Bắt đầu cài đặt HTTP Proxy Server...${NC}"
+echo ""
 
-# Cập nhật hệ thống
-echo "[1/5] ➤ Đang cập nhật hệ thống..."
-if ! apt update && apt upgrade -y; then
-    echo -e "${RED}❌ Lỗi khi cập nhật hệ thống${NC}"
+# 1. Cài đặt các gói
+echo "[1/5] ➤ Đang cập nhật và cài đặt các gói..."
+if ! apt update || ! apt upgrade -y || ! apt install -y squid vim apache2-utils; then
+    echo -e "${RED}❌ Lỗi khi cập nhật hoặc cài đặt các gói${NC}"
     exit 1
 fi
 
-# Cài gói cần thiết
-echo "[2/5] ➤ Đang cài Squid + Apache2-utils..."
-if ! apt install -y squid apache2-utils vim curl bc; then
-    echo -e "${RED}❌ Lỗi khi cài đặt các gói cần thiết${NC}"
-    exit 1
-fi
-
-# Sao lưu file cấu hình cũ
-if [ -f /etc/squid/squid.conf ]; then
-    echo "[3/5] ➤ Sao lưu cấu hình cũ của Squid..."
-    cp /etc/squid/squid.conf /etc/squid/squid.conf.bak
-fi
-
-# Tạo cấu hình mới
-echo "[4/5] ➤ Tạo file cấu hình VIP cho Squid..."
-cat <<EOF | tee /etc/squid/squid.conf > /dev/null
+# 2. Xóa và tạo file cấu hình Squid
+echo "[2/5] ➤ Đang xóa và tạo file cấu hình Squid..."
+rm -f /etc/squid/squid.conf
+cat <<EOF >/etc/squid/squid.conf
 auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwords
 auth_param basic realm proxy
 acl authenticated proxy_auth REQUIRED
 http_access allow authenticated
-http_port $proxy_port
-cache_mem 256 MB
-maximum_object_size_in_memory 64 KB
-cache_replacement_policy lru
-refresh_pattern ^ftp: 1440 20% 10080
-refresh_pattern ^gopher: 1440 0% 1440
-refresh_pattern -i (/cgi-bin/|\?) 0 0% 0
-refresh_pattern . 0 20% 4320
-client_lifetime 1 hour
-half_closed_clients off
+http_port 6969
 EOF
 
-# Tạo tài khoản proxy VIP
-echo "[5/5] ➤ Tạo tài khoản VIP..."
+# 3. Tạo tài khoản proxy
+echo "[3/5] ➤ Tạo tài khoản proxy VIP..."
+squid_user="tangoclong"
+squid_pass="08122000"
 echo "$squid_pass" | htpasswd -c -i /etc/squid/passwords "$squid_user"
 
-# Khởi động lại Squid
-echo "[5/5] ➤ Khởi động lại dịch vụ Squid..."
-systemctl restart squid
-systemctl enable squid
-
-# Kiểm tra service
-sleep 3
-if systemctl is-active --quiet squid; then
-    echo " ✅ Squid service đã khởi động thành công"
-else
-    echo -e "${RED}❌ Lỗi: Squid service không khởi động được${NC}"
-    journalctl -u squid --no-pager | tail -n 10
+# 4. Khởi động lại dịch vụ Squid
+echo "[4/5] ➤ Khởi động lại dịch vụ Squid..."
+if ! systemctl restart squid.service || ! systemctl enable squid.service; then
+    echo -e "${RED}❌ Lỗi: Không thể khởi động dịch vụ Squid${NC}"
+    journalctl -u squid.service --no-pager | tail -n 10
     exit 1
 fi
 
-# Lấy IP và hiển thị thông tin
-ip_address=$(curl -s --connect-timeout 10 ifconfig.me || echo "N/A")
+# Kiểm tra dịch vụ
+sleep 3
+if systemctl is-active --quiet squid.service; then
+    echo "[5/5] ✅ Squid service đã khởi động thành công"
+else
+    echo -e "${RED}❌ Lỗi: Squid service không khởi động được${NC}"
+    journalctl -u squid.service --no-pager | tail -n 10
+    exit 1
+fi
+
+# Kiểm tra IP
+echo -e "${CYAN}🔍 Đang kiểm tra IP...${NC}"
+ip_address=$(curl -s --connect-timeout 10 ipinfo.io/ip || echo "N/A")
 if [ "$ip_address" = "N/A" ]; then
     echo -e "${RED}❌ Không thể lấy địa chỉ IP${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✅ Cài đặt HTTP Proxy VIP thành công cho $client_full_name!${NC}"
-
 # Lấy thông tin IP
-ip_info=$(get_ip_info "$ip_address")
+echo -e "${CYAN}📡 Đang lấy thông tin IP...${NC}"
+ip_info=$(curl -s --connect-timeout 10 "http://ip-api.com/json/$ip_address" || echo "{}")
 isp=$(echo "$ip_info" | grep -o '"isp":"[^"]*"' | cut -d'"' -f4 || echo "N/A")
 country=$(echo "$ip_info" | grep -o '"country":"[^"]*"' | cut -d'"' -f4 || echo "N/A")
 
-# Kiểm tra tốc độ
-speed=$(check_network_speed)
-
 # Kiểm tra proxy
-proxy_status=$(check_http_proxy "$ip_address" "$proxy_port" "$squid_user" "$squid_pass")
+echo -e "${CYAN}🔧 Đang kiểm tra HTTP proxy...${NC}"
+proxy_status="HTTP Proxy ❌ (không thể kết nối)"
+for endpoint in "http://icanhazip.com" "http://ifconfig.me/ip" "http://checkip.amazonaws.com"; do
+    if curl -s -o /dev/null -w "%{http_code}" --proxy "http://$squid_user:$squid_pass@$ip_address:6969" "$endpoint" --connect-timeout 10 --max-time 15 | grep -q "200"; then
+        proxy_status="HTTP Proxy ✅ (tested with $endpoint)"
+        break
+    fi
+done
 
-# Hiển thị thông tin HTTP proxy
+# Hiển thị thông tin proxy
+echo -e "${GREEN}✅ Cài đặt HTTP Proxy VIP thành công cho $client_full_name!${NC}"
 echo -e "${PURPLE}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${PURPLE}║${WHITE} THÔNG TIN HTTP PROXY VIP - $client_full_name${PURPLE}║${NC}"
 echo -e "${PURPLE}╠═══════════════════════════════════════════════════════════════════════════════╣${NC}"
-echo -e "${PURPLE}║${CYAN} 🌐 HTTP Proxy URL: ${WHITE}http://$squid_user:$squid_pass@$ip_address:$proxy_port ${PURPLE}║${NC}"
+echo -e "${PURPLE}║${CYAN} 🌐 HTTP Proxy URL: ${WHITE}http://$squid_user:$squid_pass@$ip_address:6969 ${PURPLE}║${NC}"
 echo -e "${PURPLE}║${CYAN} 📍 Địa chỉ IP: ${WHITE}$ip_address ${PURPLE}║${NC}"
-echo -e "${PURPLE}║${CYAN} 🔌 Cổng: ${WHITE}$proxy_port ${PURPLE}║${NC}"
+echo -e "${PURPLE}║${CYAN} 🔌 Cổng: ${WHITE}6969 ${PURPLE}║${NC}"
 echo -e "${PURPLE}║${CYAN} 👤 Username: ${WHITE}$squid_user ${PURPLE}║${NC}"
 echo -e "${PURPLE}║${CYAN} 🔑 Password: ${WHITE}$squid_pass ${PURPLE}║${NC}"
 echo -e "${PURPLE}║${CYAN} 🏢 Nhà mạng: ${WHITE}$isp ${PURPLE}║${NC}"
 echo -e "${PURPLE}║${CYAN} 🌍 Quốc gia: ${WHITE}$country ${PURPLE}║${NC}"
-echo -e "${PURPLE}║${CYAN} ⚡ Tốc độ mạng: ${WHITE}${speed} Mbps ${PURPLE}║${NC}"
 echo -e "${PURPLE}║${CYAN} 🔧 Trạng thái: ${WHITE}$proxy_status ${PURPLE}║${NC}"
 echo -e "${PURPLE}╚═══════════════════════════════════════════════════════════════════════════════╝${NC}"
 
-# Hiển thị thông tin liên hệ cuối
+# Thông tin liên hệ
 echo ""
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║${WHITE} THÔNG TIN NHÀ PHÁT TRIỂN ${GREEN}║${NC}"
